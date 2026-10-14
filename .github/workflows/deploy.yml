@@ -78,8 +78,8 @@ jobs:
               sounds="$sounds step_${mat}${i} dig_${mat}${i}"
             done
           done
-          # classicube.net does not host every sound (e.g. cloth/glass/gravel 404 there too);
-          # missing ones are just silent in game, so only fail if nothing could be fetched.
+          # classicube.net only hosts some of these (as of 2026-10 just the grass set; the rest 404
+          # for the official client too). Missing ones are silent in game, so only fail if none load.
           fetched=0
           missing=""
           for name in $sounds; do

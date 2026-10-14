@@ -9,7 +9,7 @@ Self-hosted [ClassiCube](https://github.com/ClassiCube/ClassiCube) web client (s
 1. Checks out ClassiCube at the tag in `CLASSICUBE_REF`.
 2. Rewrites the hardcoded `/static/` asset paths to relative ones so the game works under `/<repo>/`.
 3. Compiles `ClassiCube.js` with the same Emscripten image and `emcc` flags the upstream CI uses for that tag.
-4. Downloads the default texture pack and sound files from classicube.net at build time.
+4. Downloads the default texture pack and sound files from classicube.net at build time (classicube.net currently only hosts the grass sounds, so other block sounds are silent).
 5. Publishes `index.html`, `ClassiCube.js` and the assets to GitHub Pages.
 
 Upgrade the game by changing `CLASSICUBE_REF` and pushing.

@@ -25,6 +25,18 @@
       var dpi = window.devicePixelRatio || 1;
       var w = Math.round(window.innerWidth  * dpi);
       var h = Math.round(window.innerHeight * dpi);
+      if (w === 0 || h === 0) {
+        // Page not laid out yet (e.g. opened in a hidden frame). Wait for a real size,
+        // then fire 'resize' so the game re-runs this and picks up the new bounds.
+        setTimeout(function () {
+          if (window.innerWidth > 0 && window.innerHeight > 0) {
+            window.dispatchEvent(new Event('resize'));
+          } else {
+            resizeGameCanvas();
+          }
+        }, 200);
+        return;
+      }
       canvas.width  = w - (w % 2);
       canvas.height = h - (h % 2);
     }
