@@ -78,12 +78,28 @@ jobs:
               sounds="$sounds step_${mat}${i} dig_${mat}${i}"
             done
           done
+          # classicube.net does not host every sound (e.g. cloth/glass/gravel 404 there too);
+          # missing ones are just silent in game, so only fail if nothing could be fetched.
+          fetched=0
+          missing=""
           for name in $sounds; do
-            fetch "$ASSET_BASE/sounds/${name}.wav" "_site/static/sounds/${name}.wav"
+            if fetch "$ASSET_BASE/sounds/${name}.wav" "_site/static/sounds/${name}.wav"; then
+              fetched=$((fetched + 1))
+            else
+              rm -f "_site/static/sounds/${name}.wav"
+              missing="$missing $name"
+            fi
           done
+          if [ -n "$missing" ]; then
+            echo "::warning::sounds not available upstream:$missing"
+          fi
+          if [ "$fetched" -eq 0 ]; then
+            echo "::error::no sounds could be fetched from $ASSET_BASE"
+            exit 1
+          fi
 
           ls -la _site _site/static
-          echo "sounds: $(ls _site/static/sounds | wc -l)"
+          echo "sounds fetched: $fetched"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
