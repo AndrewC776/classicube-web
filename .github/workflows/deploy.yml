@@ -1,0 +1,92 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Upstream release to build; bump to upgrade the game.
+  CLASSICUBE_REF: "1.3.8"
+  # Same toolchain image the upstream webclient CI uses.
+  EMSCRIPTEN_IMAGE: "trzeci/emscripten-fastcomp:1.39.0"
+  ASSET_BASE: "https://www.classicube.net/static"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v5
+
+      - name: Checkout ClassiCube source
+        uses: actions/checkout@v5
+        with:
+          repository: ClassiCube/ClassiCube
+          ref: ${{ env.CLASSICUBE_REF }}
+          path: classicube
+
+      - name: Make asset URLs relative to the page
+        # Upstream hardcodes '/static/...', which breaks under a Pages project path (/<repo>/).
+        run: |
+          sed -i "s#'/static/#'static/#g" classicube/src/webclient/interop_web.js
+          if grep -n "'/static/" classicube/src/webclient/interop_web.js; then
+            echo "::error::unpatched absolute /static/ path remains"
+            exit 1
+          fi
+
+      - name: Compile web client
+        run: |
+          docker run --rm -v "$PWD/classicube:/src" -w /src "$EMSCRIPTEN_IMAGE" make weblegacy
+          test -s classicube/ClassiCube.js
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/static/sounds
+          cp index.html _site/
+          cp classicube/ClassiCube.js _site/ClassiCube.js
+          cp classicube/license.txt _site/LICENSE-ClassiCube.txt
+
+          fetch() { curl -fsSL --retry 3 --retry-delay 2 -o "$2" "$1"; }
+
+          fetch "$ASSET_BASE/default.zip" _site/static/default.zip
+          unzip -tq _site/static/default.zip
+
+          # Sound names come from src/webclient/Audio_Web.c (sounds_list).
+          sounds="dig_glass1 dig_glass2 dig_glass3"
+          for mat in cloth grass gravel sand snow stone wood; do
+            for i in 1 2 3 4; do
+              sounds="$sounds step_${mat}${i} dig_${mat}${i}"
+            done
+          done
+          for name in $sounds; do
+            fetch "$ASSET_BASE/sounds/${name}.wav" "_site/static/sounds/${name}.wav"
+          done
+
+          ls -la _site _site/static
+          echo "sounds: $(ls _site/static/sounds | wc -l)"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>ClassiCube</title>
+  <!-- ClassiCube (c) UnknownShadow200, BSD-3-Clause: see LICENSE-ClassiCube.txt -->
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+    /* the canvas must not have any border or padding, or mouse coords will be wrong */
+    #canvas { display: block; border: 0; padding: 0; margin: 0; width: 100vw; height: 100vh; background: #000; }
+    #logmsg { position: fixed; left: 12px; bottom: 10px; font: 14px/1.4 system-ui, sans-serif; color: #f67; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <span id="logmsg"></span>
+
+  <script>
+    // Called by the game itself whenever the window is resized.
+    function resizeGameCanvas() {
+      var canvas = document.getElementById('canvas');
+      var dpi = window.devicePixelRatio || 1;
+      var w = Math.round(window.innerWidth  * dpi);
+      var h = Math.round(window.innerHeight * dpi);
+      canvas.width  = w - (w % 2);
+      canvas.height = h - (h % 2);
+    }
+
+    function pickUsername() {
+      var fromQuery = new URLSearchParams(window.location.search).get('name');
+      var clean = function (s) { return (s || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 16); };
+      if (clean(fromQuery)) return clean(fromQuery);
+
+      try {
+        var saved = clean(localStorage.getItem('cc-username'));
+        if (saved) return saved;
+        var generated = 'Player' + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('cc-username', generated);
+        return generated;
+      } catch (e) {
+        return 'Player' + Math.floor(1000 + Math.random() * 9000);
+      }
+    }
+
+    var Module = {
+      preRun: [ resizeGameCanvas ],
+      postRun: [],
+      // A single argument (the username) starts singleplayer.
+      arguments: [ pickUsername() ],
+      print: function (text) {
+        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        console.log(text);
+      },
+      printErr: function (text) {
+        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        console.error(text);
+      },
+      canvas: document.getElementById('canvas'),
+      setStatus: function (text) {
+        console.log(text);
+        document.getElementById('logmsg').textContent = text;
+      },
+      totalDependencies: 0,
+      monitorRunDependencies: function (left) {
+        this.totalDependencies = Math.max(this.totalDependencies, left);
+        Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
+      }
+    };
+    Module.setStatus('Downloading...');
+    window.onerror = function (msg) {
+      Module.setStatus('Exception thrown, see JavaScript console (' + msg + ')');
+      Module.setStatus = function (text) {
+        if (text) Module.printErr('[post-exception status] ' + text);
+      };
+    };
+  </script>
+  <script async src="ClassiCube.js"></script>
+</body>
+</html>
